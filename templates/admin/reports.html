@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+    <h3 class="text-primary">Reported Items</h3>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-primary mb-3">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+
+    <table class="table table-hover table-striped align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>S.No</th>
+                <th>Item</th>
+                <th>Reporter</th>
+                <th>Reason</th>
+                <th>Reported On</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for r in reports %}
+            <tr>
+                <td>{{ loop.index }}</td>
+
+                <td>
+                    <b class="text-light">{{ r.item_title }}</b>
+                </td>
+
+                <td>
+                    <span class="text-light">{{ r.reporter_name }}</span><br>
+                    <small class="text-secondary">{{ r.reporter_email }}</small>
+                </td>
+
+                <td class="text-warning">{{ r.reason }}</td>
+                <td class="text-info">{{ r.created_at[:10] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+{% endblock %}

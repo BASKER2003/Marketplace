@@ -1,0 +1,561 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+<style>
+  /* Small page-level tweaks */
+  .container { max-width:1200px; }
+  .market-card { border-radius:12px; overflow:hidden; transition: transform .18s ease, box-shadow .18s ease; }
+  .market-card:hover { transform: translateY(-6px); box-shadow: 0 16px 36px rgba(0,0,0,0.10); }
+
+  .card-img-top { height:240px; object-fit:cover; }
+  .small-muted { font-size:0.85rem; color:var(--bs-secondary-text); }
+
+  .badge-status { font-weight:600; padding:.3rem .5rem; border-radius:.5rem; }
+  .btn-action { min-width:44px; }
+
+  .bi-heart-fill {
+    color: #d30000 !important; /* dark red */
+  }
+  .btn-action i {
+      font-size: 18px;
+  }
+
+  /* make carousel controls visible on dark images */
+  .carousel-control-prev-icon,
+  .carousel-control-next-icon {
+    filter: invert(1) brightness(0.85) drop-shadow(0 2px 4px rgba(0,0,0,0.45));
+  }
+
+  /* modal image */
+  .modal-img { width:100%; height:60vh; object-fit:contain; background:#000; display:block; }
+
+  @media (max-width:767px) {
+    .card-img-top { height:180px; }
+    .modal-img { height:45vh; }
+  }
+
+  /* small toggle+lists helpers */
+  .toggle-btn.active { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .tagline { color:var(--bs-secondary-text); font-size:0.95rem; }
+
+  /* dark mode tweaks (works with your base dark-mode) */
+  body.dark-mode .card { background:#1e1e1e; color:#eaeaea; }
+  body.dark-mode .badge { opacity:0.95; }
+  body.dark-mode .modal-content { background:#0b0b0d; color:#eaeaea; }
+  .muted-dark { color: rgba(255,255,255,0.65); }
+</style>
+
+<div class="container py-4">
+
+  <h2 class="text-center fw-bold mb-4"><i class="bi bi-shop"></i> Marketplace</h2>
+
+  <!-- Toggle -->
+  <div class="text-center mb-4 d-flex justify-content-center gap-2 flex-wrap">
+    <button id="btnBrowse" class="btn btn-primary px-4 py-2 rounded-pill toggle-btn active">
+      <i class="bi bi-cart me-2"></i> Browse Marketplace
+    </button>
+
+    <button id="btnMyListings" class="btn btn-outline-primary px-4 py-2 rounded-pill toggle-btn">
+      <i class="bi bi-person-badge me-2"></i> My Listings
+      <span class="badge bg-primary ms-2">{{ user_items|length }}</span>
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div id="marketFilters" class="row mb-4">
+    <div class="col-md-4 mb-2">
+      <input id="searchInput" type="search" class="form-control" placeholder="Search title, description, category...">
+    </div>
+
+    <div class="col-md-2 mb-2">
+      <select id="statusFilter" class="form-select">
+        <option value="">All Status</option>
+        <option value="active">Active</option>
+        <option value="expired">Expired</option>
+        <option value="scheduled">Scheduled</option>
+      </select>
+    </div>
+
+    <div class="col-md-3 mb-2">
+      <!-- categories auto-derived below -->
+       <select id="categoryFilter" class="form-select">
+      <option value="">All Categories</option>
+
+      {% set cats = {} %}
+
+      {% for it in items %}
+          {% set _ = cats.__setitem__(it.category, true) %}
+      {% endfor %}
+
+      {% for cat in cats.keys() %}
+          <option value="{{ cat|lower }}">{{ cat }}</option>
+      {% endfor %}
+  </select>
+
+    </div>
+
+    <div class="col-md-3 mb-2">
+      <select id="sortSelect" class="form-select">
+        <option value="newest">Newest</option>
+        <option value="oldest">Oldest</option>
+        <option value="price_low">Price: Low → High</option>
+        <option value="price_high">Price: High → Low</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div id="marketGrid" class="row">
+    {% for item in items %}
+    <div class="col-lg-4 col-md-6 col-sm-12 mb-4 marketplace-item"
+         data-title="{{ item.title|lower }}"
+         data-description="{{ item.description|lower }}"
+         data-category="{{ (item.category or '')|lower }}"
+         data-status="{{ item.status }}"
+         data-price="{{ item.price }}"
+         data-date="{{ item.posted_clean }}">
+
+      <div class="card market-card h-100">
+
+        <!-- Clicking image or View opens modal -->
+        <div class="card-img-top-wrapper" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#viewModal{{ item.id }}">
+          {% if item.images and item.images|length > 0 %}
+            <img src="{{ url_for('static', filename='uploads/items/' ~ item.images[0]) }}"
+                 class="card-img-top" alt="{{ item.title }}">
+          {% else %}
+            <div class="card-img-top d-flex align-items-center justify-content-center"
+                 style="height:240px;background:linear-gradient(180deg,#f6f6f6,#ffffff);">
+                 <div class="muted-dark">No image</div>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div style="flex:1; min-width:0;">
+              <h5 class="card-title mb-1 fw-bold text-truncate" title="{{ item.title }}">{{ item.title }}</h5>
+              <div class="small-muted mb-1 text-truncate" title="{{ item.description }}">{{ item.description }}</div>
+            </div>
+            <div class="text-end ms-2">
+              <span class="badge bg-secondary">{{ item.category }}</span>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center mt-auto">
+            <div>
+              {% if item.price == 0 %}
+                <span class="badge badge-status bg-success">FREE</span>
+              {% else %}
+                <div class="fw-bold">{{ item.currency }} {{ '%.2f'|format(item.price) }}</div>
+              {% endif %}
+              <div class="small-muted">Posted: {{ item.posted_clean }}</div>
+            </div>
+
+            <div class="text-end">
+              {% if item.status == 'active' %}
+                <span class="badge bg-success badge-status">Active</span>
+              {% elif item.status == 'expired' %}
+                <span class="badge bg-danger badge-status">Expired</span>
+              {% else %}
+                <span class="badge bg-warning text-dark badge-status">Scheduled</span>
+              {% endif %}
+              <div class="small-muted">Expires: {{ item.expires_clean }}</div>
+            </div>
+          </div>
+
+          <!-- actions -->
+          <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-outline-primary btn-sm flex-fill" data-bs-toggle="modal" data-bs-target="#viewModal{{ item.id }}">
+              <i class="bi bi-eye me-1"></i> View
+            </button>
+
+            {% if session.get('user_id') and (session.get('user_id') == item.owner_id) %}
+              <!-- owner: show only manage -->
+              <a href="{{ url_for('edit_item', item_id=item.id) }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-pencil"></i>
+              </a>
+            {% else %}
+              <!-- others: wishlist/report/contact -->
+              <a href="javascript:void(0)"
+   class="wishlist-btn d-flex justify-content-center align-items-center"
+   data-item-id="{{ item.id }}">
+    {% if item.in_wishlist %}
+        <i class="bi bi-heart-fill text-danger fs-5"></i>
+    {% else %}
+        <i class="bi bi-heart text-danger fs-5"></i>
+    {% endif %}
+</a>
+              <a href="{{ url_for('report_page', item_id=item.id) }}" class="btn btn-outline-warning btn-sm btn-action" title="Report item">
+                <i class="bi bi-flag"></i>
+              </a>
+              <a href="{{ url_for('start_chat', other_user_id=item.owner_id) }}" class="btn btn-outline-success btn-sm btn-action" title="Contact seller">
+                <i class="bi bi-chat-left-text"></i>
+              </a>
+            {% endif %}
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal (moved inline per item — Bootstrap will manage backdrops correctly) -->
+    <div class="modal fade" id="viewModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">{{ item.title }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-md-7">
+                {% if item.images and item.images|length > 1 %}
+                  <div id="modalCarousel{{ item.id }}" class="carousel slide" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                      {% for img in item.images %}
+                        <div class="carousel-item {% if loop.first %}active{% endif %}">
+                          <img src="{{ url_for('static', filename='uploads/items/' ~ img) }}" class="d-block w-100 modal-img" alt="image {{ loop.index }}">
+                        </div>
+                      {% endfor %}
+                    </div>
+
+                    <button class="carousel-control-prev" type="button" data-bs-target="#modalCarousel{{ item.id }}" data-bs-slide="prev">
+                      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                      <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#modalCarousel{{ item.id }}" data-bs-slide="next">
+                      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                      <span class="visually-hidden">Next</span>
+                    </button>
+                  </div>
+
+                {% elif item.images and item.images|length == 1 %}
+                  <img src="{{ url_for('static', filename='uploads/items/' ~ item.images[0]) }}" class="modal-img" alt="{{ item.title }}">
+                {% else %}
+                  <div class="d-flex align-items-center justify-content-center" style="height:320px;border:1px dashed #ddd;">
+                    <div class="text-muted">No images available</div>
+                  </div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-5">
+                <div class="mb-2"><strong>Category:</strong> <span class="badge bg-secondary">{{ item.category }}</span></div>
+
+                <div class="mb-2"><strong>Price:</strong>
+                  {% if item.price == 0 %}
+                    <span class="text-success fw-bold">FREE</span>
+                  {% else %}
+                    <span class="fw-bold">{{ item.currency }} {{ '%.2f'|format(item.price) }}</span>
+                  {% endif %}
+                </div>
+
+                <div class="mb-2"><strong>Posted:</strong> <span class="small-muted">{{ item.posted_clean }}</span></div>
+                <div class="mb-3"><strong>Expires:</strong> <span class="small-muted">{{ item.expires_clean }}</span></div>
+
+                <div class="mb-3">
+                  <strong>Description</strong>
+                  <p class="small-muted" style="white-space:pre-wrap;">{{ item.description }}</p>
+                </div>
+
+                {% if session.get('user_id') and session.get('user_id') == item.owner_id %}
+                  <div class="d-grid gap-2">
+                    <a href="{{ url_for('edit_item', item_id=item.id) }}" class="btn btn-primary">
+                      <i class="bi bi-pencil"></i> Edit Item
+                    </a>
+                    <a href="{{ url_for('delete_item', item_id=item.id) }}" class="btn btn-danger"
+                       onclick="return confirm('Delete this item permanently?');">
+                      <i class="bi bi-trash"></i> Delete Item
+                    </a>
+                  </div>
+                {% else %}
+                  <div class="d-grid gap-2">
+                    <a class="btn btn-outline-danger wishlist-btn d-flex align-items-center justify-content-center gap-1"
+   data-item-id="{{ item.id }}">
+    {% if item.in_wishlist %}
+        <i class="bi bi-heart-fill text-danger"></i>
+        <span class="wishlist-text">Remove from Wishlist</span>
+    {% else %}
+        <i class="bi bi-heart text-danger"></i>
+        <span class="wishlist-text">Add to Wishlist</span>
+    {% endif %}
+</a>
+
+                    <a class="btn btn-outline-warning" href="{{ url_for('report_page', item_id=item.id) }}"><i class="bi bi-flag"></i> Report</a>
+                    <a class="btn btn-outline-success" href="{{ url_for('start_chat', other_user_id=item.owner_id) }}"><i class="bi bi-chat-left-text"></i> Contact Seller</a>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    {% endfor %}
+  </div>
+
+
+  {% if total_pages > 1 %}
+  <!-- Pagination -->
+  <nav aria-label="page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+      <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for('marketplace', page=page-1) }}">&laquo;</a>
+      </li>
+
+      {% for p in range(1, total_pages+1) %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+          <a class="page-link" href="{{ url_for('marketplace', page=p) }}">{{ p }}</a>
+        </li>
+      {% endfor %}
+
+      <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for('marketplace', page=page+1) }}">&raquo;</a>
+      </li>
+    </ul>
+  </nav>
+{% endif %}
+
+
+  <!-- My Listings (hidden by default) -->
+  <div id="myListings" class="d-none mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="fw-bold"><i class="bi bi-person-badge"></i> Your Listings</h3>
+      <button id="btnBackToMarketplace" class="btn btn-outline-primary"><i class="bi bi-arrow-left me-2"></i> Back to Marketplace</button>
+    </div>
+
+    <div class="row g-3">
+      {% for item in user_items %}
+      <div class="col-md-4">
+        <div class="card market-card h-100">
+          <img src="{{ url_for('static', filename='uploads/items/' ~ (item.images[0] if item.images else 'no_image.png')) }}"
+               class="card-img-top" style="height:180px; object-fit:cover;">
+
+          <div class="card-body d-flex flex-column">
+            <h6 class="mb-1 text-truncate">{{ item.title }}</h6>
+            <div class="small-muted mb-2">Posted: {{ (item.posted_date[:10] if item.posted_date) }}</div>
+            <a href="{{ url_for('edit_item', item_id=item.id) }}" class="btn btn-primary btn-sm mt-auto w-100">
+              <i class="bi bi-pencil"></i> Manage
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  /* -------------------------------------------
+     ELEMENTS
+  ------------------------------------------- */
+  const items = Array.from(document.querySelectorAll('.marketplace-item'));
+  const searchInput = document.getElementById('searchInput');
+  const statusFilter = document.getElementById('statusFilter');
+  const categoryFilter = document.getElementById('categoryFilter');
+  const sortSelect = document.getElementById('sortSelect');
+
+  const btnBrowse = document.getElementById('btnBrowse');
+  const btnMyListings = document.getElementById('btnMyListings');
+  const btnBackToMarketplace = document.getElementById('btnBackToMarketplace');
+
+  const marketGrid = document.getElementById('marketGrid');
+  const marketFilters = document.getElementById('marketFilters');
+  const myListings = document.getElementById('myListings');
+
+
+  /* -------------------------------------------
+     FILTER ITEMS
+  ------------------------------------------- */
+  function filterItems() {
+    const q = (searchInput?.value || '').trim().toLowerCase();
+    const st = statusFilter?.value || '';
+    const cat = (categoryFilter?.value || '').toLowerCase();
+
+    items.forEach(el => {
+      const title = el.dataset.title.toLowerCase();
+      const desc = el.dataset.description.toLowerCase();
+      const category = el.dataset.category.toLowerCase();
+      const status = el.dataset.status;
+
+      let show = true;
+
+      if (q && !(title.includes(q) || desc.includes(q) || category.includes(q))) {
+        show = false;
+      }
+      if (st && status !== st) show = false;
+      if (cat && category !== cat) show = false;
+
+      el.style.display = show ? '' : 'none';
+    });
+  }
+
+
+  /* -------------------------------------------
+     SORT ITEMS  (FIXED)
+  ------------------------------------------- */
+  function sortItems() {
+
+    // THE FIX — Use correct container
+    const container = document.getElementById('marketGrid');
+    if (!container) return;
+
+    const visibleItems = Array.from(document.querySelectorAll('.marketplace-item'))
+      .filter(n => n.style.display !== 'none');
+
+    const mode = sortSelect.value;
+
+    visibleItems.sort((a, b) => {
+      const pa = parseFloat(a.dataset.price);
+      const pb = parseFloat(b.dataset.price);
+      const da = a.dataset.date;
+      const db = b.dataset.date;
+
+      switch (mode) {
+        case 'newest': return db.localeCompare(da);
+        case 'oldest': return da.localeCompare(db);
+        case 'price_low': return pa - pb;
+        case 'price_high': return pb - pa;
+      }
+      return 0;
+    });
+
+    visibleItems.forEach(el => container.appendChild(el));
+  }
+
+
+  /* -------------------------------------------
+     HOOK EVENTS
+  ------------------------------------------- */
+  searchInput.addEventListener('input', () => { filterItems(); sortItems(); });
+  statusFilter.addEventListener('change', () => { filterItems(); sortItems(); });
+  categoryFilter.addEventListener('change', () => { filterItems(); sortItems(); });
+  sortSelect.addEventListener('change', () => { sortItems(); });
+
+
+  /* -------------------------------------------
+     DEFAULT FILTER: SHOW ACTIVE
+  ------------------------------------------- */
+  statusFilter.value = 'active';
+  filterItems();
+  sortItems();
+
+
+  /* -------------------------------------------
+     TOGGLE
+  ------------------------------------------- */
+  function showMarketplace() {
+    marketGrid.classList.remove('d-none');
+    marketFilters.classList.remove('d-none');
+    myListings.classList.add('d-none');
+
+    btnBrowse.classList.add('active');
+    btnMyListings.classList.remove('active');
+  }
+
+  function showMyListings() {
+    marketGrid.classList.add('d-none');
+    marketFilters.classList.add('d-none');
+    myListings.classList.remove('d-none');
+
+    btnMyListings.classList.add('active');
+    btnBrowse.classList.remove('active');
+  }
+
+  btnBrowse.addEventListener('click', showMarketplace);
+  btnBackToMarketplace.addEventListener('click', showMarketplace);
+  btnMyListings.addEventListener('click', showMyListings);
+
+
+  /* -------------------------------------------
+     MODAL CAROUSEL FIX
+  ------------------------------------------- */
+  document.querySelectorAll('.modal').forEach(modalEl => {
+
+    modalEl.addEventListener('shown.bs.modal', function () {
+      const carousel = modalEl.querySelector('.carousel');
+      if (carousel) {
+        const inst = new bootstrap.Carousel(carousel, { interval: 3500 });
+        inst.cycle();
+      }
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', function () {
+      document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+      document.body.classList.remove('modal-open');
+    });
+  });
+
+});
+
+document.querySelectorAll(".wishlist-btn").forEach(btn => {
+    btn.addEventListener("click", function() {
+
+        const itemId = this.dataset.itemId;
+        const icon = this.querySelector("i");
+        const textSpan = this.querySelector(".wishlist-text");
+
+        fetch("{{ url_for('wishlist_toggle') }}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "X-CSRFToken": "{{ csrf_token() if csrf_token else '' }}"
+            },
+            body: "item_id=" + itemId
+        })
+        .then(res => res.json())
+        .then(data => {
+
+            // Determine new state
+            const added = data.status === "added";
+
+            // Update current button
+            if (added) {
+                icon.classList.remove("bi-heart");
+                icon.classList.add("bi-heart-fill");
+                if (textSpan) textSpan.textContent = "Remove from Wishlist";
+            } else {
+                icon.classList.remove("bi-heart-fill");
+                icon.classList.add("bi-heart");
+                if (textSpan) textSpan.textContent = "Add to Wishlist";
+            }
+
+            // Also update **all other buttons for the same item**
+            document.querySelectorAll(`.wishlist-btn[data-item-id='${itemId}']`).forEach(otherBtn => {
+                if (otherBtn === btn) return; // skip current (already updated)
+
+                const otherIcon = otherBtn.querySelector("i");
+                const otherText = otherBtn.querySelector(".wishlist-text");
+
+                if (added) {
+                    otherIcon.classList.remove("bi-heart");
+                    otherIcon.classList.add("bi-heart-fill");
+                    if (otherText) otherText.textContent = "Remove from Wishlist";
+                } else {
+                    otherIcon.classList.remove("bi-heart-fill");
+                    otherIcon.classList.add("bi-heart");
+                    if (otherText) otherText.textContent = "Add to Wishlist";
+                }
+            });
+
+        })
+        .catch(err => console.error(err));
+    });
+});
+
+
+</script>
+
+
+{% endblock %}

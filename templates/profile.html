@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center py-4">
+  <div class="col-md-8">
+    <div class="card shadow">
+      <div class="card-body">
+
+        <h4 class="card-title text-center mb-4">Profile</h4>
+
+        <!-- PROFILE DETAILS ALWAYS VISIBLE -->
+        <div id="profileView">
+          <div class="d-flex flex-column flex-md-row align-items-center mb-4">
+            {% if user.profile_picture %}
+              <img src="{{ url_for('static', filename='uploads/profile/' + user.profile_picture) }}" 
+                   class="rounded-circle me-md-4 mb-3 mb-md-0" width="140" height="140">
+            {% endif %}
+
+            <div>
+              <p><strong>Name:</strong> {{ user.full_name }}</p>
+              <p><strong>Email:</strong> {{ user.email }}</p>
+              <p><strong>Employee ID:</strong> {{ user.employee_id }}</p>
+              <p><strong>Department:</strong> {{ user.department or '-' }}</p>
+              <p><strong>Phone:</strong> {{ user.phone or '-' }}</p>
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="d-flex justify-content-center gap-2">
+            <button class="btn btn-primary" onclick="showSection('updateProfileSection')">
+              Update Profile
+            </button>
+
+            <button class="btn btn-warning" onclick="showSection('changePasswordSection')">
+              Change Password
+            </button>
+
+            <a href="{{ url_for('dashboard') }}" class="btn btn-dark">Back</a>
+
+          </div>
+
+        </div>
+
+        <!-- UPDATE PROFILE FORM -->
+        <div id="updateProfileSection" class="d-none mt-4">
+          <h5>Update Profile</h5>
+          <form method="post" enctype="multipart/form-data" action="{{ url_for('update_profile') }}">
+
+            <div class="mb-2">
+              <label class="form-label">Full Name</label>
+              <input type="text" class="form-control" name="full_name" value="{{ user.full_name }}">
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">Department</label>
+              <input type="text" class="form-control" name="department" value="{{ user.department }}">
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">Phone</label>
+              <input type="text" class="form-control" name="phone" value="{{ user.phone }}">
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">Profile Picture</label>
+              <input type="file" class="form-control" name="profile_picture">
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+          </form>
+
+          <button class="btn btn-outline-secondary w-100 mt-3" onclick="backToProfile()">Back</button>
+        </div>
+
+        <!-- CHANGE PASSWORD FORM -->
+        <div id="changePasswordSection" class="d-none mt-4">
+          <h5>Change Password</h5>
+          <form method="post" action="{{ url_for('update_password') }}">
+            <div class="mb-2">
+              <label class="form-label">New Password</label>
+              <input type="password" class="form-control" name="new_password" required>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">Confirm Password</label>
+              <input type="password" class="form-control" name="confirm_password" required>
+            </div>
+
+            <button type="submit" class="btn btn-success w-100">Update Password</button>
+          </form>
+
+          <button class="btn btn-outline-secondary w-100 mt-3" onclick="backToProfile()">Back</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showSection(id) {
+    document.getElementById("profileView").classList.add("d-none");
+    document.getElementById("updateProfileSection").classList.add("d-none");
+    document.getElementById("changePasswordSection").classList.add("d-none");
+
+    document.getElementById(id).classList.remove("d-none");
+}
+
+function backToProfile() {
+    document.getElementById("updateProfileSection").classList.add("d-none");
+    document.getElementById("changePasswordSection").classList.add("d-none");
+    document.getElementById("profileView").classList.remove("d-none");
+}
+</script>
+
+{% endblock %}

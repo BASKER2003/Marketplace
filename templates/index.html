@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="text-center py-5">
+    <h1 class="display-5">Welcome to the Employee Community Marketplace</h1>
+    <p class="lead">Buy, sell, or give away items safely within the organization.</p>
+    {% if session.get('user_id') %}
+        <h3 class="fw-bold">{{ session.get('full_name') }}</h3>
+    {% else %}
+    <p>
+        <a class="btn btn-primary btn-lg" href="{{ url_for('login') }}">Login</a>
+        <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('register') }}">Register</a>
+    </p>
+    {% endif %}
+</div>
+
+<div class="row mt-5 text-center">
+    <div class="col-md-4 mb-3">
+        <h4>Post Items Easily</h4>
+        <p>Create listings quickly with photos and descriptions.</p>
+    </div>
+    <div class="col-md-4 mb-3">
+        <h4>Browse & Search</h4>
+        <p>Find items using search and filters.</p>
+    </div>
+    <div class="col-md-4 mb-3">
+        <h4>Safe & Moderated</h4>
+        <p>Report posts and our admins will review them.</p>
+    </div>
+</div>
+{% endblock %}

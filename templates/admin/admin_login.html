@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container col-md-4 mt-5">
+    <div class="card p-4 shadow">
+        <h3 class="text-center">Admin Login</h3>
+
+        <form method="POST">
+            <label>Email</label>
+            <input type="email" class="form-control" name="email" required>
+
+            <button class="btn btn-dark w-100 mt-3">Send OTP</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

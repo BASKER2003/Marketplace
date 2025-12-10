@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container col-md-4 mt-5">
+    <div class="card p-4 shadow">
+        <h3 class="text-center">Enter OTP</h3>
+
+        <!-- SHOW SIMULATED OTP -->
+        {% if session.get('simulated_admin_otp') %}
+            <div class="alert alert-info text-center">
+                <b>Simulated OTP:</b> {{ session['simulated_admin_otp'] }}
+            </div>
+        {% endif %}
+
+        <form method="POST">
+            <label>6-digit OTP</label>
+            <input type="text" class="form-control" name="otp" maxlength="6" required>
+
+            <button class="btn btn-dark w-100 mt-3">Verify</button>
+        </form>
+
+        <p class="text-muted text-center mt-3">
+            OTP is valid for 5 minutes.
+        </p>
+    </div>
+</div>
+{% endblock %}

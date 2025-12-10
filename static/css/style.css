@@ -1,0 +1,52 @@
+/* Logo colors */
+:root {
+    --color-primary: #db1d2b;
+    --color-secondary: #f47216;
+    --color-dark: #231f20;
+}
+
+body[data-bs-theme="light"] {
+    background-color: #f8f9fa;
+    color: var(--color-dark);
+}
+
+body[data-bs-theme="dark"] {
+    background-color: #121212;
+    color: #f8f9fa;
+}
+
+.navbar {
+    background-color: var(--color-dark) !important;
+}
+
+.navbar a.nav-link, .navbar-brand {
+    color: #f8f9fa !important;
+}
+
+.navbar a.nav-link:hover {
+    color: var(--color-secondary) !important;
+}
+
+.footer {
+    background-color: var(--color-dark) !important;
+    color: #f8f9fa;
+}
+
+.btn-primary {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--color-secondary);
+    border-color: var(--color-secondary);
+}
+
+.btn-success {
+    background-color: var(--color-secondary);
+    border-color: var(--color-secondary);
+}
+
+.alert {
+    margin-top: 1rem;
+}

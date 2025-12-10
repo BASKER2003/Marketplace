@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2 class="mb-3">Admin Dashboard</h2>
+
+<div class="card shadow-sm p-4">
+
+    <h4>Welcome, Admin 👋</h4>
+    <p class="text-muted">Use the menu on the left to manage users and items.</p>
+
+    <div class="row mt-4">
+
+        <div class="col-md-4">
+            <a href="{{ url_for('admin_users') }}" class="text-decoration-none">
+                <div class="card p-3 shadow-sm text-center">
+                    <i class="bi bi-people fs-1 text-primary"></i>
+                    <h5 class="mt-2">Manage Users</h5>
+                    <p class="text-muted small mt-1">Administer and monitor user accounts</p>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-4">
+            <a href="{{ url_for('admin_items') }}" class="text-decoration-none">
+                <div class="card p-3 shadow-sm text-center">
+                    <i class="bi bi-box-seam fs-1 text-success"></i>
+                    <h5 class="mt-2">Manage Items</h5>
+                    <p class="text-muted small mt-1">Oversee and organize user listings</p>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-4">
+            <a href="{{ url_for('admin_reports') }}" class="text-decoration-none">
+                <div class="card p-3 shadow-sm text-center hover-effect">
+                    <i class="bi bi-graph-up fs-1 text-primary"></i>
+                    <h5 class="mt-2">Reports</h5>
+                    <p class="text-muted small mt-1">View detailed analytics</p>
+                </div>
+            </a>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

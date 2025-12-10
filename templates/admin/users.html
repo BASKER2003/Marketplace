@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-3">All Users</h2>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex">
+            <input type="text" id="searchInput" class="form-control me-2" placeholder="Search by name or email">
+            <select id="departmentFilter" class="form-select me-2">
+                <option value="">All Departments</option>
+                {% set depts = users | map(attribute='department') | unique | list %}
+                {% for dept in depts %}
+                    {% if dept %}
+                        <option value="{{ dept }}">{{ dept }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+            <button id="resetFilters" class="btn btn-outline-secondary">Reset</button>
+        </div>
+        <div>
+            <a href="{{ url_for('admin_add_user') }}" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Add User</a>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-primary ms-2"><i class="bi bi-arrow-left me-1"></i> Back</a>
+        </div>
+    </div>
+
+    <table class="table table-striped table-hover" id="usersTable">
+        <thead>
+            <tr>
+                <th>S.NO.</th>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Employee ID</th>
+                <th>Department</th>
+                <th>Admin</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td class="user-name">{{ u.full_name }}</td>
+                <td class="user-email">{{ u.email }}</td>
+                <td>{{ u.employee_id }}</td>
+                <td class="user-dept">{{ u.department or 'None' }}</td>
+                <td>{{ 'Yes' if u.is_admin else 'No' }}</td>
+                <td>
+                    <a href="{{ url_for('admin_edit_user', user_id=u.id) }}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                    <form action="{{ url_for('admin_delete_user', user_id=u.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete this user?');">
+                        <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('searchInput');
+    const deptFilter = document.getElementById('departmentFilter');
+    const resetBtn = document.getElementById('resetFilters');
+    const table = document.getElementById('usersTable');
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+
+    function filterTable() {
+        const search = searchInput.value.toLowerCase();
+        const dept = deptFilter.value.toLowerCase();
+
+        rows.forEach(row => {
+            const name = row.querySelector('.user-name').textContent.toLowerCase();
+            const email = row.querySelector('.user-email').textContent.toLowerCase();
+            const department = row.querySelector('.user-dept').textContent.toLowerCase();
+
+            const matchesSearch = name.includes(search) || email.includes(search);
+            const matchesDept = !dept || department === dept;
+
+            row.style.display = (matchesSearch && matchesDept) ? '' : 'none';
+        });
+    }
+
+    searchInput.addEventListener('input', filterTable);
+    deptFilter.addEventListener('change', filterTable);
+
+    resetBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        deptFilter.value = '';
+        filterTable();
+    });
+});
+</script>
+{% endblock %}

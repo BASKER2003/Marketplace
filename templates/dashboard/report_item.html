@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="card bg-dark text-white shadow">
+        <div class="card-body">
+
+            <h3 class="mb-3">Report Item</h3>
+
+            <p>You are reporting: <strong>{{ item.title }}</strong></p>
+
+            <form method="POST" action="{{ url_for('report_item') }}">
+                <input type="hidden" name="item_id" value="{{ item.id }}">
+
+                <label class="form-label">Reason:</label>
+                <textarea name="reason" class="form-control bg-secondary text-white"
+                          rows="5" required></textarea>
+
+                <button class="btn btn-danger mt-3">Submit Report</button>
+                <a href="{{ url_for('marketplace') }}" 
+                   class="btn btn-secondary mt-3">Cancel</a>
+            </form>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

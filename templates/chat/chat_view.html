@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<style>
+.chat-area { height:60vh; overflow:auto; border:1px solid #e9ecef; padding:1rem; background: var(--bs-body-bg); border-radius:.5rem; }
+.msg-row { margin-bottom:.75rem; }
+.msg-me { text-align:right; }
+.bubble { display:inline-block; padding:.6rem .9rem; border-radius:12px; max-width:78%; word-wrap:break-word; }
+.bubble-me { background:#0d6efd; color:#fff;  border-bottom-right-radius:0; }
+.bubble-other { background:#f1f3f5; color:#212529;  border-bottom-right-radius:0; }
+.small-muted { font-size:.8rem; color:var(--bs-secondary-text); }
+.attachment-thumb { max-width:100%; height:auto; display:block; margin-top:.5rem; border-radius:8px; }
+.typing { font-style:italic; color:var(--bs-secondary-text); margin-top:.3rem; }
+</style>
+<div class="container py-4">
+<a href="{{ url_for('chats_inbox') }}" class="btn btn-outline-secondary mb-3">
+<i class="bi bi-arrow-left"></i> Back to Inbox
+</a>
+<div class="card">
+<div class="card-body">
+<!-- HEADER -->
+<div class="d-flex align-items-center mb-3">
+<div class="me-3">
+{% if other.profile_picture %}
+<img src="{{ url_for('static', filename='uploads/profile/' ~ other.profile_picture) }}"
+width="48" height="48" class="rounded-circle">
+{% else %}
+<div class="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center"
+style="width:48px;height:48px;">
+<i class="bi bi-person"></i>
+</div>
+{% endif %}
+</div>
+<div>
+<div class="fw-bold">{{ other.full_name }}</div>
+<div id="typingIndicator" class="typing" style="display:none;">Typing...</div>
+</div>
+</div>
+<!-- CHAT AREA -->
+<div id="chatArea" class="chat-area mb-3" aria-live="polite">
+{% for m in messages %}
+<div class="msg-row {% if m.sender_id == session['user_id'] %}msg-me{% endif %}"
+data-msg-id="{{ m.id }}" data-created-at="{{ m.created_at }}">
+<div class="d-inline-block">
+<div class="bubble {% if m.sender_id == session['user_id'] %}bubble-me{% else %}bubble-other{% endif %}">
+{% if m.body %}
+<div>{{ m.body|e }}</div>
+{% endif %}
+{% for a in m.attachments %}
+<div class="attachment-container">
+<a href="{{ url_for('chat_upload', filename=a) }}" target="_blank">
+<img src="{{ url_for('chat_upload', filename=a) }}" class="attachment-thumb">
+</a>
+</div>
+{% endfor %}
+</div>
+<div class="small-muted {% if m.sender_id == session['user_id'] %}text-end{% endif %}">
+{{ m.created_at }}
+</div>
+</div>
+</div>
+{% endfor %}
+</div>
+<!-- SEND MESSAGE FORM -->
+<form id="sendForm" enctype="multipart/form-data">
+<input type="hidden" name="conversation_id" value="{{ conversation_id }}">
+<div class="row g-2 align-items-center">
+<div class="col-md-8">
+<textarea id="msgBody" name="body" class="form-control" rows="2"
+placeholder="Write a message..." required></textarea>
+</div>
+<div class="col-md-2">
+<input id="msgImage" name="image" type="file" accept="image/*" class="form-control form-control-sm">
+</div>
+<div class="col-md-2">
+<button class="btn btn-primary w-100" type="submit">
+<i class="bi bi-send"></i> Send
+</button>
+</div>
+</div>
+</form>
+</div>
+</div>
+</div>
+<script>
+(function(){
+const conversationId = "{{ conversation_id }}";
+const currentUserId = "{{ session['user_id'] }}";
+const pollInterval = 2000;
+let lastFetchTime = null;
+const chatArea = document.getElementById("chatArea");
+const typingIndicator = document.getElementById("typingIndicator");
+const lastMsg = document.querySelector("#chatArea .msg-row[data-created-at]:last-child");
+if (lastMsg) lastFetchTime = lastMsg.getAttribute("data-created-at");
+function scrollToBottom() {
+chatArea.scrollTop = chatArea.scrollHeight;
+}
+scrollToBottom();
+async function pollMessages() {
+let url = "/api/messages/" + conversationId;
+if (lastFetchTime) url += "?since=" + encodeURIComponent(lastFetchTime);
+try {
+const res = await fetch(url);
+if (!res.ok) return;
+const data = await res.json();
+if (Array.isArray(data) && data.length > 0) {
+data.forEach(m => appendMessage(m));
+lastFetchTime = data[data.length - 1].created_at;
+scrollToBottom();
+}
+} catch (err) {
+console.error("Poll error", err);
+}
+}
+function appendMessage(m) {
+if (document.querySelector('[data-msg-id="' + m.id + '"]')) return;
+const row = document.createElement("div");
+row.className = "msg-row " + (m.sender_id == currentUserId ? "msg-me" : "");
+row.setAttribute("data-msg-id", m.id);
+row.setAttribute("data-created-at", m.created_at);
+const wrap = document.createElement("div");
+wrap.className = "d-inline-block";
+const bubble = document.createElement("div");
+bubble.className = "bubble " + (m.sender_id == currentUserId ? "bubble-me" : "bubble-other");
+if (m.body) {
+const t = document.createElement("div");
+t.textContent = m.body;
+bubble.appendChild(t);
+}
+if (m.attachments && m.attachments.length) {
+m.attachments.forEach(a => {
+// Fixed: Properly construct the attachment element with correct styling
+const attachmentContainer = document.createElement("div");
+attachmentContainer.className = "attachment-container mt-2";
+
+const link = document.createElement("a");
+link.href = "/uploads/chat/" + a;
+link.target = "_blank";
+link.className = "attachment-link";
+
+const img = document.createElement("img");
+img.src = "/uploads/chat/" + a;
+img.className = "attachment-thumb";
+img.style.maxWidth = "100%";
+img.style.height = "auto";
+img.style.display = "block";
+img.style.marginTop = "0.5rem";
+img.style.borderRadius = "8px";
+
+link.appendChild(img);
+attachmentContainer.appendChild(link);
+bubble.appendChild(attachmentContainer);
+});
+}
+wrap.appendChild(bubble);
+const timeDiv = document.createElement("div");
+timeDiv.className = "small-muted " + (m.sender_id == currentUserId ? "text-end" : "");
+timeDiv.textContent = m.created_at;
+wrap.appendChild(timeDiv);
+row.appendChild(wrap);
+chatArea.appendChild(row);
+}
+async function pollTyping() {
+try {
+const res = await fetch("/api/typing_status/" + conversationId);
+if (!res.ok) return;
+const d = await res.json();
+typingIndicator.style.display = d.typing_user_ids && d.typing_user_ids.length ? "block" : "none";
+} catch {}
+}
+setInterval(pollMessages, pollInterval);
+setInterval(pollTyping, 1200);
+const sendForm = document.getElementById("sendForm");
+sendForm.addEventListener("submit", async function(e){
+e.preventDefault();
+const fd = new FormData(sendForm);
+const body = fd.get("body").trim();
+const file = document.getElementById("msgImage").files[0];
+if (!body && !file) return;
+try {
+const res = await fetch("/api/send_message", { method:"POST", body:fd });
+const json = await res.json();
+if (json.status === "ok") {
+appendMessage({
+id: json.message_id,
+sender_id: currentUserId,
+body: body,
+created_at: json.created_at,
+attachments: file ? [file.name] : []
+});
+sendForm.reset();
+scrollToBottom();
+lastFetchTime = json.created_at;
+}
+} catch (err) {
+alert("Send failed");
+}
+});
+const bodyInput = document.getElementById("msgBody");
+bodyInput.addEventListener("input", function(){
+fetch("/api/typing", {
+method:"POST",
+headers: {"Content-Type":"application/x-www-form-urlencoded"},
+body: "conversation_id=" + conversationId
+}).catch(()=>{});
+});
+})();
+</script>
+{% endblock %}

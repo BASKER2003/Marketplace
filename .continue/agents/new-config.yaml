@@ -1,0 +1,20 @@
+name: Assist-o-thon
+version: 1.0.0
+schema: v1
+ 
+ 
+models:
+  - title: Qwen3-Coder-30B-AWQ-4bit 
+    name: qwen3-coder-30b-awq4bit
+    provider: openai
+    model: qwen3-coder-30b-awq4   
+    apiBase: http://35.153.222.132:8080/v1
+    apiKey: ak-Qwen-30b-vllm-ec2
+    roles:
+      - chat
+      - autocomplete
+      - edit
+      - apply
+    defaultCompletionOptions:
+      temperature: 0.2
+      maxTokens: 4096

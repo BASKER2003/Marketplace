@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow">
+      <div class="card-body">
+        <h4 class="card-title mb-4">Login</h4>
+
+        <div class="btn-group mb-3 w-100" role="group">
+            <button id="btn-sso" class="btn btn-outline-primary w-50" onclick="toggleLogin('sso')"><i class="bi bi-shield-lock"></i> SSO Login</button>
+            <button id="btn-password" class="btn btn-outline-secondary w-50" onclick="toggleLogin('password')"><i class="bi bi-key"></i> Password Login</button>
+        </div>
+
+        <!-- SSO Form -->
+        <form id="form-sso" method="post" style="display:none;">
+          <input type="hidden" name="mode" value="sso">
+          <div class="mb-3">
+            <label class="form-label">Employee ID or Email (SSO)</label>
+            <input class="form-control" name="identifier" placeholder="EMP001 or user@sandbox.com" required>
+          </div>
+          <button class="btn btn-primary w-100" type="submit">Login with SSO</button>
+        </form>
+
+        <!-- Password Form -->
+        <form id="form-password" method="post" style="display:none;">
+          <input type="hidden" name="mode" value="password">
+          <div class="mb-3">
+            <label class="form-label">Corporate Email (@sandbox.com)</label>
+            <input class="form-control" name="email" type="email" required pattern="^[^@]+@sandbox\.com$" placeholder="user@sandbox.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input class="form-control" name="password" type="password" required>
+          </div>
+          <button class="btn btn-success w-100" type="submit">Login</button>
+        </form>
+
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary w-100 mt-2">Back</a>
+
+        <script>
+          function toggleLogin(type) {
+            document.getElementById('form-sso').style.display = type==='sso'?'block':'none';
+            document.getElementById('form-password').style.display = type==='password'?'block':'none';
+
+            document.getElementById('btn-sso').classList.toggle('btn-primary', type==='sso');
+            document.getElementById('btn-password').classList.toggle('btn-primary', type==='password');
+          }
+        </script>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,472 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+/* ---------- Layout & Visuals (polished) ---------- */
+:root {
+  --primary: #db1d2b;
+  --accent: #f47216;
+  --dark: #231f20;
+}
+
+/* Preview card */
+.preview-card { min-height: 360px; border-radius: 12px; overflow: hidden; background: var(--card-bg, #fff); border: 1px solid rgba(0,0,0,0.04); }
+.preview-media-box {
+  width: 100%;
+  aspect-ratio: 16/9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg,#f6f7f9,#ffffff);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  padding: 12px;
+  box-sizing: border-box;
+}
+.preview-media-box.dark { background: linear-gradient(180deg,#0b0b0b,#141414); border-bottom: 1px solid rgba(255,255,255,0.03); }
+
+.preview-main {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;    /* key: avoid cropping, show full image */
+  border-radius: 8px;
+  display:block;
+}
+
+/* Placeholder */
+.preview-placeholder {
+  width: 86%;
+  height: 72%;
+  border: 2px dashed rgba(0,0,0,0.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color: rgba(0,0,0,0.45);
+  background: rgba(0,0,0,0.01);
+  border-radius: 8px;
+  text-align:center;
+  padding: 16px;
+}
+.preview-placeholder.dark {
+  color: rgba(255,255,255,0.62);
+  border: 2px dashed rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.01);
+}
+
+/* Thumbnails */
+.thumb-img {
+  width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:pointer;
+  transition: box-shadow .14s ease, transform .12s ease;
+}
+.thumb-img:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.12); }
+.thumb-wrap { position:relative; display:inline-block; }
+.thumb-selected {
+  box-shadow: 0 0 0 4px rgba(255,215,64,0.18), 0 12px 34px rgba(0,0,0,0.12);
+  border-radius:8px;
+}
+
+/* star badge */
+.star-badge {
+  position:absolute; top:-8px; right:-8px;
+  background: linear-gradient(180deg,#ffd84d,#ffb400);
+  color:#1b1b1b; padding:4px 6px; border-radius:50%; font-weight:700;
+  box-shadow:0 6px 18px rgba(0,0,0,0.12); font-size:12px;
+}
+
+/* scroller */
+.thumb-scroller { display:flex; gap:10px; overflow:auto; padding:8px; }
+.thumb-scroller::-webkit-scrollbar{height:8px}
+.thumb-scroller::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.08); border-radius:8px}
+
+/* badges */
+.price-badge { font-size:0.95rem; padding:.4rem .6rem; border-radius:.5rem; }
+.expiry-badge { font-size:.85rem; padding:.33rem .5rem; border-radius:.4rem; }
+
+/* description wrap and max height */
+.preview-description {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-height: 140px;
+  overflow: auto;
+  margin-top: 0.5rem;
+  color: var(--subtext, #6c757d);
+}
+
+/* responsive tweaks */
+@media (max-width:767px) {
+  .preview-main { max-height:240px; }
+  .thumb-img { width:60px; height:60px; }
+}
+
+/* Dark mode */
+body.dark-mode {
+  --card-bg: #111213;
+  --text: #e9e9e9;
+  --subtext: #cfcfcf;
+}
+body.dark-mode .preview-card { background: var(--card-bg); color:var(--text); }
+body.dark-mode .card { background: var(--card-bg); color:var(--text); }
+body.dark-mode .form-control { background: #151617; color: var(--text); border-color: rgba(255,255,255,0.04); }
+body.dark-mode .preview-placeholder { background: rgba(255,255,255,0.02); }
+body.dark-mode .preview-media-box.dark { background: linear-gradient(180deg,#0b0b0b,#141414); }
+
+
+body.dark-mode .form-text {
+    color: rgba(255,255,255,0.62) !important;
+}
+
+
+</style>
+
+<div class="container my-5">
+  <h2 class="text-center mb-4">Add New Item</h2>
+
+  <div class="row g-4">
+    <!-- Form -->
+    <div class="col-lg-6">
+      <div class="card shadow p-4">
+        <form method="POST" enctype="multipart/form-data" id="addItemForm" novalidate>
+          <!-- Title -->
+          <div class="mb-3">
+            <label class="form-label">Title <b class="text-muted">(short & clear)</b></label>
+            <input class="form-control" name="title" id="titleInput" required maxlength="150" placeholder="e.g. MacBook Air 2020 - Good condition">
+          </div>
+
+          <!-- Description -->
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" name="description" id="descriptionInput" rows="4" maxlength="4000" required placeholder="Add details, condition, accessories..."></textarea>
+          </div>
+
+          <!-- Category -->
+          <div class="mb-3">
+            <label class="form-label">Category</label>
+            <select class="form-select" name="category" id="categorySelect" required>
+              {% for cat in categories %}
+                <option value="{{ cat }}">{{ cat }}</option>
+              {% endfor %}
+              <option value="other">Other</option>
+            </select>
+            <input class="form-control mt-2 d-none" id="customCategory" name="custom_category" placeholder="Enter custom category">
+          </div>
+
+          <!-- Price + Free -->
+          <div class="mb-3">
+            <label class="form-label">Price</label>
+            <div class="d-flex gap-2 align-items-center">
+              <span class="input-group-text px-3" id="currencySymbol">€</span>
+              <input class="form-control" type="number" name="price" id="priceInput" step="0.01" min="0" required>
+              <div class="form-check ms-2">
+                <input class="form-check-input" type="checkbox" id="freeCheckbox">
+                <label class="form-check-label">Free</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Currency -->
+          <div class="mb-3">
+            <label class="form-label">Currency</label>
+            <select class="form-select" name="currency" id="currencySelect" required>
+              <option value="EUR" selected>€ - EUR</option>
+              <option value="GBP">£ - GBP</option>
+              <option value="INR">₹ - INR</option>
+            </select>
+          </div>
+
+          <!-- Posted date (today or future) -->
+          <div class="mb-3">
+            <label class="form-label">Posted Date</label>
+            <input type="date" class="form-control" id="postedDateInput" name="posted_date">
+            <div class="form-text">Choose today or a future date (when listing should appear).</div>
+          </div>
+
+          <!-- Expiry -->
+          <div class="mb-3">
+            <label class="form-label">Expiry</label>
+            <select class="form-select" name="expiry_option" id="expirySelect" required>
+              {% for opt in expiry_options %}
+                <option value="{{ opt }}">{{ opt if opt != 'custom' else 'Custom (1–100 days)' }}</option>
+              {% endfor %}
+            </select>
+            <input class="form-control mt-2 d-none" type="number" id="customDays" name="custom_days" placeholder="Enter days (1-100)" min="1" max="100">
+          </div>
+
+          <!-- Images -->
+          <div class="mb-3">
+            <label class="form-label">Images (max 5)</label>
+            <input class="form-control" type="file" id="imagesInput" name="images[]" accept="image/*" multiple>
+            <div class="form-text">You can upload up to 5 images</div>
+            <div class="mt-3" id="clientImagePreview" aria-hidden="true"></div>
+          </div>
+
+          <input type="hidden" name="thumbnail_index" id="thumbnailIndex" value="0">
+
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary">Add Item</button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">Back</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Live Preview -->
+    <div class="col-lg-6">
+      <h5 class="text-center mb-3">Live Preview</h5>
+
+      <div class="card preview-card shadow p-0" id="previewCard">
+        <div id="previewMedia" class="preview-media-box">
+          <!-- placeholder or image will be shown here -->
+          <div id="previewPlaceholder" class="preview-placeholder">
+            <div>
+              <div style="font-size:20px; font-weight:700; margin-bottom:6px;">No image</div>
+              <div class="text-muted small">Upload images to see live preview</div>
+            </div>
+          </div>
+          <img id="previewMainImage" class="preview-main" src="" alt="main preview" style="display:none;">
+        </div>
+
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div style="flex:1; margin-right: 12px;">
+              <h5 id="previewTitle" class="mb-1">Title will appear here</h5>
+              <div id="previewDescription" class="preview-description">Description will appear here</div>
+            </div>
+
+            <div class="text-end" style="min-width:140px;">
+              <div id="postedDate" class="green-tag" style="background:#d4f7df;color:#0b7a3a;padding:6px 10px;border-radius:6px;font-weight:600;font-size:0.85rem">
+                Posted: Today
+              </div>
+              <div style="height:6px"></div>
+              <div id="previewExpiryBadge" class="badge expiry-badge bg-success text-white" style="font-weight:600; margin-top:8px;">Expiry</div>
+            </div>
+          </div>
+
+          <p class="mb-1"><strong>Category:</strong> <span id="previewCategory">-</span></p>
+          <div class="d-flex align-items-center gap-2 mt-2">
+            <span id="previewPriceBadge" class="badge price-badge bg-primary text-white">Price</span>
+          </div>
+        </div>
+
+        <div class="border-top p-2">
+          Click a image below to set it as the main image (thumbnail).
+          <div id="previewThumbnails" class="thumb-scroller" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====== Config & helpers ====== */
+const MAX_IMAGES = 5;
+const symbolMap = { EUR: '€', GBP: '£', INR: '₹' };
+function clamp(n,a,b){return Math.max(a,Math.min(b,n));}
+function formatISO(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }
+
+/* ====== Elements refs ====== */
+const imagesInput = document.getElementById('imagesInput');
+const clientPreview = document.getElementById('clientImagePreview');
+const thumbScroller = document.getElementById('previewThumbnails');
+const previewMainImage = document.getElementById('previewMainImage');
+const previewPlaceholder = document.getElementById('previewPlaceholder');
+const previewMedia = document.getElementById('previewMedia');
+const thumbnailIndexInput = document.getElementById('thumbnailIndex');
+
+const titleInput = document.getElementById('titleInput');
+const descInput = document.getElementById('descriptionInput');
+const categorySelect = document.getElementById('categorySelect');
+const customCategory = document.getElementById('customCategory');
+const priceInput = document.getElementById('priceInput');
+const freeCheckbox = document.getElementById('freeCheckbox');
+const currencySelect = document.getElementById('currencySelect');
+const expirySelect = document.getElementById('expirySelect');
+const customDays = document.getElementById('customDays');
+const postedDateInput = document.getElementById('postedDateInput');
+
+const previewTitle = document.getElementById('previewTitle');
+const previewDescription = document.getElementById('previewDescription');
+const previewCategory = document.getElementById('previewCategory');
+const previewPriceBadge = document.getElementById('previewPriceBadge');
+const previewExpiryBadge = document.getElementById('previewExpiryBadge');
+const postedDateEl = document.getElementById('postedDate');
+
+/* ====== Initialize defaults ====== */
+const today = new Date();
+if(postedDateInput) {
+  // set default to today if empty
+  if(!postedDateInput.value) postedDateInput.value = formatISO(today);
+  postedDateEl.textContent = `Posted: ${postedDateInput.value}`;
+}
+
+/* ====== Update textual preview ====== */
+function updateTextPreview(){
+  previewTitle.textContent = titleInput.value.trim() || 'Title will appear here';
+  previewDescription.textContent = descInput.value.trim() || 'Description will appear here';
+
+  const cat = categorySelect.value === 'other' ? (customCategory.value.trim() || '-') : categorySelect.value;
+  previewCategory.textContent = cat;
+
+  const isFree = freeCheckbox.checked;
+  const price = isFree ? 'Free' : (priceInput.value ? Number(priceInput.value).toFixed(2) : '-');
+  const symbol = symbolMap[currencySelect.value] || '';
+  previewPriceBadge.textContent = isFree ? 'Free' : `${symbol} ${price}`;
+
+  const expiryVal = expirySelect.value === 'custom' ? customDays.value : expirySelect.value;
+  const days = Number(expiryVal) || 0;
+  previewExpiryBadge.textContent = expiryVal ? `${expiryVal} days` : 'Expiry';
+
+  // expiry color logic
+  previewExpiryBadge.className = 'badge expiry-badge';
+  if(isNaN(days) || days <= 0){
+    previewExpiryBadge.classList.add('bg-secondary','text-white');
+  } else if(days > 30){
+    previewExpiryBadge.classList.add('bg-success','text-white'); // green
+  } else if(days > 7){
+    previewExpiryBadge.classList.add('bg-warning','text-dark'); // orange
+  } else {
+    previewExpiryBadge.classList.add('bg-danger','text-white'); // red
+  }
+
+  // posted date sync if set
+  if(postedDateInput && postedDateInput.value){
+    postedDateEl.textContent = `Posted: ${postedDateInput.value}`;
+  }
+
+  // theme-adaptive preview-media background
+  if(document.body.classList.contains('dark-mode')){
+    previewMedia.classList.add('dark');
+    previewPlaceholder.classList.add('dark');
+  } else {
+    previewMedia.classList.remove('dark');
+    previewPlaceholder.classList.remove('dark');
+  }
+}
+
+/* ====== Events: text updates ====== */
+if(titleInput) titleInput.addEventListener('input', updateTextPreview);
+if(descInput) descInput.addEventListener('input', updateTextPreview);
+categorySelect.addEventListener('change', ()=> {
+  if(categorySelect.value === 'other'){ customCategory.classList.remove('d-none'); customCategory.required = true; }
+  else { customCategory.classList.add('d-none'); customCategory.required = false; customCategory.value = ''; }
+  updateTextPreview();
+});
+if(customCategory) customCategory.addEventListener('input', updateTextPreview);
+
+freeCheckbox.addEventListener('change', ()=>{ priceInput.disabled = freeCheckbox.checked; if(freeCheckbox.checked) priceInput.value=''; updateTextPreview(); });
+currencySelect.addEventListener('change', updateTextPreview);
+priceInput.addEventListener('input', updateTextPreview);
+
+expirySelect.addEventListener('change', ()=> {
+  if(expirySelect.value === 'custom'){ customDays.classList.remove('d-none'); customDays.required = true; }
+  else { customDays.classList.add('d-none'); customDays.required = false; customDays.value=''; }
+  updateTextPreview();
+});
+customDays.addEventListener('input', ()=> { customDays.value = clamp(Number(customDays.value || 0),1,100); updateTextPreview(); });
+
+if(postedDateInput) postedDateInput.addEventListener('change', ()=> { postedDateEl.textContent = `Posted: ${postedDateInput.value || formatISO(today)}`; });
+
+/* ====== Image preview & thumbnail selection ====== */
+let currentFiles = [];
+function clearImagePreviews(){
+  clientPreview.innerHTML = '';
+  thumbScroller.innerHTML = '';
+  previewMainImage.src = '';
+  previewMainImage.style.display = 'none';
+  previewPlaceholder.style.display = 'block';
+  thumbnailIndexInput.value = 0;
+  currentFiles = [];
+}
+
+imagesInput.addEventListener('change', (e)=> {
+  clearImagePreviews();
+  const files = Array.from(e.target.files).slice(0, MAX_IMAGES);
+  if(files.length === 0) return;
+  currentFiles = files;
+
+  files.forEach((file, idx)=> {
+    const reader = new FileReader();
+    reader.onload = (ev)=> {
+      // inline small form preview
+      const wrapper = document.createElement('div');
+      wrapper.className = 'thumb-wrap me-2';
+      wrapper.style.display = 'inline-block';
+      wrapper.style.position = 'relative';
+      wrapper.innerHTML = `<img src="${ev.target.result}" class="thumb-img" data-idx="${idx}" alt="preview">`;
+      clientPreview.appendChild(wrapper);
+
+      // preview thumbnail area
+      const t = document.createElement('div');
+      t.className = 'thumb-wrap';
+      t.style.minWidth = '80px';
+      t.style.minHeight = '80px';
+      t.innerHTML = `<img src="${ev.target.result}" class="thumb-img ${idx===0?'thumb-selected':''}" data-idx="${idx}" alt="thumb">`;
+
+      // add star if first
+      if(idx === 0){
+        const star = document.createElement('div');
+        star.className = 'star-badge';
+        star.textContent = '★';
+        t.appendChild(star);
+        previewMainImage.src = ev.target.result;
+        previewMainImage.style.display = 'block';
+        previewPlaceholder.style.display = 'none';
+        thumbnailIndexInput.value = 0;
+      }
+
+      // click selects thumbnail
+      t.addEventListener('click', ()=> {
+        Array.from(thumbScroller.children).forEach(ch=>{
+          const img = ch.querySelector('img'); if(img) img.classList.remove('thumb-selected');
+          const oldStar = ch.querySelector('.star-badge'); if(oldStar) oldStar.remove();
+        });
+        const imgEl = t.querySelector('img'); if(imgEl) imgEl.classList.add('thumb-selected');
+        const star = document.createElement('div'); star.className='star-badge'; star.textContent='★';
+        t.appendChild(star);
+        previewMainImage.src = ev.target.result;
+        previewMainImage.style.display = 'block';
+        previewPlaceholder.style.display = 'none';
+        thumbnailIndexInput.value = idx;
+      });
+
+      thumbScroller.appendChild(t);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  thumbnailIndexInput.value = 0;
+  updateTextPreview();
+});
+
+/* ====== Form submit validations ====== */
+document.getElementById('addItemForm').addEventListener('submit', function(evt){
+  if(currentFiles.length > MAX_IMAGES){
+    evt.preventDefault();
+    alert('You can upload up to 5 images only.');
+    return false;
+  }
+  if(expirySelect.value === 'custom'){
+    const v = Number(customDays.value || 0);
+    if(v < 1 || v > 100){ evt.preventDefault(); alert('Custom expiry must be between 1 and 100 days.'); return false; }
+  }
+  // thumbnail_index is already set
+  return true;
+});
+
+/* ====== Theme sync for preview badges & background (optional) ====== */
+function syncThemeBadges(){
+  if(document.body.classList.contains('dark-mode')){
+    previewPriceBadge.classList.remove('bg-primary'); previewPriceBadge.classList.add('bg-dark','text-white');
+    if(!previewExpiryBadge.classList.contains('bg-success') && !previewExpiryBadge.classList.contains('bg-warning') && !previewExpiryBadge.classList.contains('bg-danger')){
+      previewExpiryBadge.classList.add('bg-secondary','text-white');
+    }
+    previewMedia.classList.add('dark');
+    previewPlaceholder.classList.add('dark');
+  } else {
+    previewPriceBadge.classList.remove('bg-dark','text-white'); previewPriceBadge.classList.add('bg-primary','text-white');
+    updateTextPreview();
+    previewMedia.classList.remove('dark');
+    previewPlaceholder.classList.remove('dark');
+  }
+}
+document.addEventListener('DOMContentLoaded', ()=>{ syncThemeBadges(); updateTextPreview(); });
+</script>
+{% endblock %}
